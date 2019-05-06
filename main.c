@@ -12,12 +12,14 @@
 #define LPF 200 // hz
 
 int main() {
+  // init GPIO
   if(wiringPiSetup()<0) {
     printf("failed to initialize wiring pi\n");
     return -1;
   }
   initADC();
 
+  // init FFT
   kiss_fftr_cfg cfg = kiss_fftr_alloc(SAMPLES_PER_FFT, 0, NULL, NULL);
   kiss_fft_scalar* vals = (kiss_fft_scalar*) malloc(sizeof(kiss_fft_scalar)*SAMPLES_PER_FFT);
   kiss_fft_cpx* freqs = (kiss_fft_cpx*) malloc(sizeof(kiss_fft_cpx)*(SAMPLES_PER_FFT/2+1));
@@ -33,25 +35,28 @@ int main() {
     return -1;
   }
 
+  // init bluetooth
   Connection connection = SetupConnection();
 
-  char user_input[8] = {0};
   while(true) {
+    const unsigned fullstart = micros();
+    /*char user_input[8];
     printf("press enter to read value. 'q' to quit.\n");
     while(!fgets(&user_input[0],8, stdin));
-    if(user_input[0] == 'q') break;
+    if(user_input[0] == 'q') break; */
 
-    //printf("getting vals...\n");
+    // get time series
     unsigned start = micros();
     for(int i=0;i<SAMPLES_PER_FFT;i++){ vals[i] = readADC(); }//delayMicroseconds(490); } // limit to ~2000hz sampling
     unsigned stop = micros();
-    float samplerate = (SAMPLES_PER_FFT*1e6*1.f)/(stop-start);
+    const float samplerate = (SAMPLES_PER_FFT*1e6*1.f)/(stop-start);
     //printf("Sample rate: %.3f\n", samplerate);
 
+    // convert to freq series
     kiss_fftr(cfg, vals, freqs);
+    const float freq_inc = samplerate/SAMPLES_PER_FFT;
 
-    // now find strongest frequency
-    float freq_inc = samplerate/SAMPLES_PER_FFT;
+    // print strongest frequency
     /*float curmax = 0;
     float curmaxIdx = -1;
     for(int i=ceil(LPF/freq_inc);i<SAMPLES_PER_FFT/2+1;i++) {
@@ -66,6 +71,7 @@ int main() {
     }
     printf("Detected Freq: %.3f (+/- %.3f)\n", (curmaxIdx+0.5)*freq_inc, freq_inc*0.5);*/
 
+    // send info to android
     static const BUF_LEN = 16384;
     char buf[BUF_LEN];
     int len = snprintf(buf, BUF_LEN, "%.3f,", freq_inc);
@@ -75,6 +81,8 @@ int main() {
     }
     len += snprintf(buf+len, BUF_LEN-len, "\n");
     SendMessage(connection, buf, len);
+    const unsigned fullstop = micros();
+    printf("Full message speed: %.3f\n", 1e6/(fullstop-fullstart));
   }
 
   kiss_fftr_free(cfg);
