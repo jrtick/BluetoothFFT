@@ -52,7 +52,7 @@ int main() {
 
     // now find strongest frequency
     float freq_inc = samplerate/SAMPLES_PER_FFT;
-    float curmax = 0;
+    /*float curmax = 0;
     float curmaxIdx = -1;
     for(int i=ceil(LPF/freq_inc);i<SAMPLES_PER_FFT/2+1;i++) {
       float mag = sqrt(pow(freqs[i].r,2)+pow(freqs[i].i,2));
@@ -64,9 +64,16 @@ int main() {
 
       //printf("%.3f\t%.3f\n", (i+0.5)*freq_inc,mag);
     }
-    printf("Detected Freq: %.3f (+/- %.3f)\n", (curmaxIdx+0.5)*freq_inc, freq_inc*0.5);
-    char buf[1024];
-    int len = snprintf(buf,1024,"Detected Freq: %.3f (+/- %.3f)\n", (curmaxIdx+0.5)*freq_inc, freq_inc*0.5);
+    printf("Detected Freq: %.3f (+/- %.3f)\n", (curmaxIdx+0.5)*freq_inc, freq_inc*0.5);*/
+
+    static const BUF_LEN = 16384;
+    char buf[BUF_LEN];
+    int len = snprintf(buf, BUF_LEN, "%.3f,", freq_inc);
+    for(int i=0;i<SAMPLES_PER_FFT/2+1;i++) {
+        const float mag = sqrt(pow(freqs[i].r,2)+pow(freqs[i].i,2));
+        len += snprintf(buf+len, BUF_LEN-len, "%.3f,", mag);
+    }
+    len += snprintf(buf+len, BUF_LEN-len, "\n");
     SendMessage(connection, buf, len);
   }
 
