@@ -12,7 +12,7 @@
 #include <pigpio.h>
 
 // max sample rate 43khz
-#define SAMPLES_PER_FFT 2048
+#define SAMPLES_PER_FFT 1024
 #define LPF 200 // hz
 
 void* func(void* arg) {
@@ -34,8 +34,8 @@ int main(int argc, char* argv[]) {
   initADC();
 
   // send pwm to speaker
-  //gpioHardwarePWM(18, 4500, 500000);
-  gpioHardwarePWM(18, atoi(argv[1]), atoi(argv[2]));
+  gpioHardwarePWM(18, 4000, 250000);
+  //gpioHardwarePWM(18, atoi(argv[1]), atoi(argv[2]));
   //sleep(2);
   //gpioHardwarePWM(18, 2*atoi(argv[1]), atoi(argv[2]));
 
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
     //overwrite last comma to be a newline instead
     buf[len-1] = '\n';
     SendMessage(buf, len);
-    //delay(50); // slow things down a little
+    delay(50); // slow things down a little
     const unsigned fullstop = micros();
     printf("total speed: %.3f (msglen=%d)\t Max freq: %.3f (+/- %.3f)\n", 1e6/(fullstop-fullstart), len,
            (curmaxidx+0.5)*freq_inc, 0.5*freq_inc);
