@@ -6,25 +6,32 @@
 
 #include "bluetooth.h"
 
-Connection SetupConnection() {
-  //allocate socket
-  int s = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+static int server = -1;
+static int client = -1;
 
-  //bind socket to port 1 of first available adapter
-  struct sockaddr_rc loc_addr = {0};
-  loc_addr.rc_family = AF_BLUETOOTH;
-  loc_addr.rc_bdaddr = *BDADDR_ANY;
-  loc_addr.rc_channel = 1;
-  bind (s, (const struct sockaddr*) &loc_addr, sizeof(loc_addr));
+void SetupConnection() {
+  if(server == -1) {
+    //allocate socket
+    int enable = 1;
+    server = socket(AF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM);
+    setsockopt(server, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
 
-  //put socket into listening mode
-  listen(s, 1);
+    //bind socket to port 1 of first available adapter
+    struct sockaddr_rc loc_addr = {0};
+    loc_addr.rc_family = AF_BLUETOOTH;
+    loc_addr.rc_bdaddr = *BDADDR_ANY;
+    loc_addr.rc_channel = 1;
+    bind (server, (const struct sockaddr*) &loc_addr, sizeof(loc_addr));
+
+    //put socket into listening mode
+    listen(server, 1);
+  }
 
   //accept only one connection
   printf("Waiting for connection...\n");
   struct sockaddr_rc rem_addr = {0};
   unsigned int opt = sizeof(rem_addr);
-  int client = accept(s, (struct sockaddr*) &rem_addr, &opt);
+  client = accept(server, (struct sockaddr*) &rem_addr, &opt);
   printf("Connected!! ");
   fflush(stdout);
 
@@ -32,21 +39,25 @@ Connection SetupConnection() {
   ba2str(&rem_addr.rc_bdaddr, buf);
   printf("Accepted connection from %s\n", buf);
   memset(buf, 0, sizeof(buf));
-
-  Connection c;
-  c.server = s;
-  c.client = client;
-  return c;
 }
 
-void SendMessage(Connection c, const char* msg, const int length) {
+void SendMessage(const char* msg, const int length) {
+  if(client == -1) return;
+
   int offset = 0;
   while(offset != length) {
-    offset += send(c.client, msg+offset, length-offset, 0);
+    int retval = send(client, msg+offset, length-offset, 0);
+    if(retval < 0) {
+      // client disconnected
+      client = -1;
+      printf("client disconnected!!\n");
+      SetupConnection(); // wait 'til another client connects before returning
+      return;
+    } else offset += retval;
   }
 }
 
-void CloseConnection(Connection c) {
-  close(c.client);
-  close(c.server);
+void CloseConnection() {
+  if(client) close(client);
+  if(server) close(server);
 }
