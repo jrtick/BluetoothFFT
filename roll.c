@@ -55,11 +55,11 @@ int main(int argc, char* argv[]) {
 
     for(int freq = 1000; freq <= 10000; freq += 500) {
       gpioHardwarePWM(18, freq, 500000);
-      delay(5);
+      delay(5); // let PWM take effect
 
       // get time series
       unsigned start = micros();
-      for(int i=0;i<SAMPLES_PER_FFT;i++){ vals[i] = readADC(); delayMicroseconds(25); } // limit to ~20000hz sampling
+      for(int i=0;i<SAMPLES_PER_FFT;i++){ vals[i] = readADCavg(2); } // limit to ~20000hz sampling
       unsigned stop = micros();
       const float samplerate = (SAMPLES_PER_FFT*1e6*1.f)/(stop-start);
 

@@ -15,15 +15,6 @@
 #define SAMPLES_PER_FFT 1024
 #define LPF 200 // hz
 
-void* func(void* arg) {
-  int i=1;
-  while(true) {
-    gpioHardwarePWM(18, 4000+100*i, 500000);
-    sleep(2);
-    if(++i==11) i=1;
-  }
-}
-
 int main(int argc, char* argv[]) {
   // init GPIO
   if(wiringPiSetup()<0) {
@@ -34,13 +25,10 @@ int main(int argc, char* argv[]) {
   initADC();
 
   // send pwm to speaker
-  gpioHardwarePWM(18, 4000, 250000);
-  //gpioHardwarePWM(18, atoi(argv[1]), atoi(argv[2]));
-  //sleep(2);
-  //gpioHardwarePWM(18, 2*atoi(argv[1]), atoi(argv[2]));
-
-  //pthread_t id;
-  //pthread_create(&id, NULL, func, NULL);
+  int freq=4000, duty=250000;
+  if(argc > 1) freq = atoi(argv[1]);
+  if(argc > 2) duty = (int)(atof(argv[2])*1000000);
+  gpioHardwarePWM(18, freq, duty);
 
   // init FFT
   kiss_fftr_cfg cfg = kiss_fftr_alloc(SAMPLES_PER_FFT, 0, NULL, NULL);
@@ -64,14 +52,10 @@ int main(int argc, char* argv[]) {
   printf("Connected! Streaming data...\n");
   while(true) {
     const unsigned fullstart = micros();
-    /*char user_input[8];
-    printf("press enter to read value. 'q' to quit.\n");
-    while(!fgets(&user_input[0],8, stdin));
-    if(user_input[0] == 'q') break; */
 
     // get time series
     unsigned start = micros();
-    for(int i=0;i<SAMPLES_PER_FFT;i++){ vals[i] = readADC(); delayMicroseconds(25); } // limit to ~20000hz sampling
+    for(int i=0;i<SAMPLES_PER_FFT;i++){ vals[i] = readADCavg(2); } // limit to ~20000hz sampling
     unsigned stop = micros();
     const float samplerate = (SAMPLES_PER_FFT*1e6*1.f)/(stop-start);
     //printf("Sample rate: %.3f\n", samplerate);
@@ -97,7 +81,6 @@ int main(int argc, char* argv[]) {
           }
           len += snprintf(buf+len, BUF_LEN-len, "%.2f,", mag);
         } else {
-          //len += snprintf(buf+len, BUF_LEN-len, "%.2f,", mag/10);
           len += snprintf(buf+len, BUF_LEN-len, "%.2f,", mag);
         }
     }
@@ -114,4 +97,3 @@ int main(int argc, char* argv[]) {
   CloseConnection();
   return 0;
 }
-
